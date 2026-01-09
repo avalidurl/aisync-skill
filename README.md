@@ -30,7 +30,7 @@ A skill that backs up your Claude Code, Codex CLI, and Cursor chat sessions to a
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/aisync-skill.git
+git clone https://github.com/avalidurl/aisync-skill.git
 cd aisync-skill
 
 # Run the installer
