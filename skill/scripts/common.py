@@ -1,154 +1,171 @@
 #!/usr/bin/env python3
 """
-Common utilities for AI session sync scripts.
-Shared secret patterns, redaction, and formatting functions.
+Common utilities for AI Sessions Sync
+======================================
+Cross-platform support for macOS, Linux, and Windows.
 """
 
+import os
 import re
+import platform
 from pathlib import Path
 
-# Default Obsidian vault path (can be overridden)
-DEFAULT_OBSIDIAN_VAULT = Path.home() / "Library/Mobile Documents/iCloud~md~obsidian/Documents/zettelkasten"
+HOME = Path.home()
 
-# Comprehensive secret patterns to redact (merged from all scripts)
+def get_obsidian_vault():
+    """
+    Auto-detect Obsidian vault location across platforms.
+    
+    Checks these locations in order:
+    1. OBSIDIAN_VAULT environment variable
+    2. ~/.aisync.conf file
+    3. Common Obsidian vault locations
+    
+    Returns: Path to vault, or None if not found
+    """
+    # 1. Check environment variable
+    env_vault = os.environ.get('OBSIDIAN_VAULT')
+    if env_vault and Path(env_vault).exists():
+        return Path(env_vault)
+    
+    # 2. Check config file
+    config_file = HOME / ".aisync.conf"
+    if config_file.exists():
+        try:
+            content = config_file.read_text()
+            for line in content.split('\n'):
+                if line.startswith('OBSIDIAN_VAULT='):
+                    vault_path = line.split('=', 1)[1].strip().strip('"\'')
+                    vault_path = Path(vault_path).expanduser()
+                    if vault_path.exists():
+                        return vault_path
+        except:
+            pass
+    
+    # 3. Check common locations
+    system = platform.system()
+    
+    if system == "Darwin":  # macOS
+        common_paths = [
+            HOME / "Library/Mobile Documents/iCloud~md~obsidian/Documents",
+            HOME / "Documents/Obsidian",
+            HOME / "Obsidian",
+            HOME / "Documents/obsidian",
+        ]
+    elif system == "Linux":
+        common_paths = [
+            HOME / "Documents/Obsidian",
+            HOME / "Obsidian",
+            HOME / "obsidian",
+            HOME / ".obsidian",
+            HOME / "Documents/obsidian",
+        ]
+    elif system == "Windows":
+        common_paths = [
+            HOME / "Documents/Obsidian",
+            HOME / "Obsidian",
+            Path("C:/Users") / os.environ.get('USERNAME', '') / "Documents/Obsidian",
+            HOME / "OneDrive/Documents/Obsidian",
+        ]
+    else:
+        common_paths = [HOME / "Obsidian", HOME / "Documents/Obsidian"]
+    
+    # Look for .obsidian folder (indicates a vault)
+    for base_path in common_paths:
+        if base_path.exists():
+            # Check if it's a vault directly
+            if (base_path / ".obsidian").exists():
+                return base_path
+            # Check subdirectories
+            try:
+                for subdir in base_path.iterdir():
+                    if subdir.is_dir() and (subdir / ".obsidian").exists():
+                        return subdir
+            except PermissionError:
+                continue
+    
+    # Default fallback
+    default = HOME / "Documents/Obsidian/ai-sessions-vault"
+    print(f"⚠️  No Obsidian vault found. Using default: {default}")
+    print(f"   Set OBSIDIAN_VAULT env var or create ~/.aisync.conf with:")
+    print(f'   OBSIDIAN_VAULT="/path/to/your/vault"')
+    return default
+
+
+def get_vscode_global_storage():
+    """Get VS Code global storage path for the current platform."""
+    system = platform.system()
+    
+    if system == "Darwin":
+        return HOME / "Library/Application Support/Code/User/globalStorage"
+    elif system == "Linux":
+        return HOME / ".config/Code/User/globalStorage"
+    elif system == "Windows":
+        appdata = Path(os.environ.get('APPDATA', HOME / 'AppData/Roaming'))
+        return appdata / "Code/User/globalStorage"
+    else:
+        return HOME / ".config/Code/User/globalStorage"
+
+
+def get_cursor_global_storage():
+    """Get Cursor global storage path for the current platform."""
+    system = platform.system()
+    
+    if system == "Darwin":
+        return HOME / "Library/Application Support/Cursor/User/globalStorage"
+    elif system == "Linux":
+        return HOME / ".config/Cursor/User/globalStorage"
+    elif system == "Windows":
+        appdata = Path(os.environ.get('APPDATA', HOME / 'AppData/Roaming'))
+        return appdata / "Cursor/User/globalStorage"
+    else:
+        return HOME / ".config/Cursor/User/globalStorage"
+
+
+# Secret patterns to redact (shared across all sync scripts)
 SECRET_PATTERNS = [
-    # OpenAI
+    # API Keys
     (r'sk-[a-zA-Z0-9]{20,}', '[REDACTED: OpenAI API Key]'),
-    (r'sk-proj-[a-zA-Z0-9\-_]{50,}', '[REDACTED: OpenAI Project Key]'),
-    
-    # Anthropic
-    (r'sk-ant-[a-zA-Z0-9\-_]{20,}', '[REDACTED: Anthropic API Key]'),
-    
-    # xAI
-    (r'xai-[a-zA-Z0-9]{20,}', '[REDACTED: xAI API Key]'),
-    
-    # Google
-    (r'AIza[a-zA-Z0-9\-_]{35}', '[REDACTED: Google API Key]'),
-    
-    # AWS
-    (r'AKIA[0-9A-Z]{16}', '[REDACTED: AWS Access Key]'),
+    (r'sk-ant-[a-zA-Z0-9-]{20,}', '[REDACTED: Anthropic API Key]'),
+    (r'sk-proj-[a-zA-Z0-9-]{20,}', '[REDACTED: OpenAI Project Key]'),
+    (r'AIza[a-zA-Z0-9_-]{35}', '[REDACTED: Google API Key]'),
+    (r'ya29\.[a-zA-Z0-9_-]+', '[REDACTED: Google OAuth Token]'),
+    (r'sgp_[a-zA-Z0-9_-]{40,}', '[REDACTED: Sourcegraph Token]'),
     
     # GitHub
     (r'ghp_[a-zA-Z0-9]{36,}', '[REDACTED: GitHub PAT]'),
-    (r'github_pat_[a-zA-Z0-9_]{20,}', '[REDACTED: GitHub PAT]'),
     (r'gho_[a-zA-Z0-9]{36,}', '[REDACTED: GitHub OAuth]'),
+    (r'ghs_[a-zA-Z0-9]{36,}', '[REDACTED: GitHub App Token]'),
+    (r'ghu_[a-zA-Z0-9]{36,}', '[REDACTED: GitHub User Token]'),
+    (r'github_pat_[a-zA-Z0-9_]{22,}', '[REDACTED: GitHub PAT v2]'),
     
-    # GitLab
-    (r'glpat-[a-zA-Z0-9\-_]{20,}', '[REDACTED: GitLab Token]'),
+    # AWS
+    (r'AKIA[0-9A-Z]{16}', '[REDACTED: AWS Access Key]'),
+    (r'aws_secret_access_key\s*=\s*[^\s]+', '[REDACTED: AWS Secret]'),
     
-    # Slack
-    (r'xox[baprs]-[a-zA-Z0-9\-]{10,}', '[REDACTED: Slack Token]'),
-    
-    # Stripe
-    (r'sk_live_[a-zA-Z0-9]{24,}', '[REDACTED: Stripe Live Key]'),
-    (r'sk_test_[a-zA-Z0-9]{24,}', '[REDACTED: Stripe Test Key]'),
-    
-    # NPM
-    (r'npm_[a-zA-Z0-9]{36}', '[REDACTED: NPM Token]'),
-    
-    # Supabase
-    (r'supabase_[a-zA-Z0-9_-]{20,}', '[REDACTED: Supabase Key]'),
-    (r'sb_[a-zA-Z0-9_-]{20,}', '[REDACTED: Supabase Key]'),
-    
-    # Bearer tokens and JWTs
-    (r'Bearer\s+[a-zA-Z0-9._\-]{20,}', '[REDACTED: Bearer Token]'),
+    # Generic tokens
+    (r'Bearer\s+[a-zA-Z0-9._-]{20,}', '[REDACTED: Bearer Token]'),
     (r'eyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*', '[REDACTED: JWT Token]'),
-    
-    # Private keys and certificates
-    (r'-----BEGIN\s+(RSA\s+|EC\s+|DSA\s+|OPENSSH\s+|PGP\s+)?PRIVATE\s+KEY(\s+BLOCK)?-----[\s\S]*?-----END\s+(RSA\s+|EC\s+|DSA\s+|OPENSSH\s+|PGP\s+)?PRIVATE\s+KEY(\s+BLOCK)?-----', '[REDACTED: Private Key]'),
-    (r'-----BEGIN\s+CERTIFICATE-----[\s\S]*?-----END\s+CERTIFICATE-----', '[REDACTED: Certificate]'),
+    (r'xox[baprs]-[a-zA-Z0-9-]+', '[REDACTED: Slack Token]'),
     
     # Database URLs
-    (r'postgres(ql)?://[^\s]+', '[REDACTED: PostgreSQL URL]'),
-    (r'mysql://[^\s]+', '[REDACTED: MySQL URL]'),
+    (r'postgres://[^\s]+', '[REDACTED: Database URL]'),
+    (r'mysql://[^\s]+', '[REDACTED: Database URL]'),
     (r'mongodb(\+srv)?://[^\s]+', '[REDACTED: MongoDB URL]'),
     (r'redis://[^\s]+', '[REDACTED: Redis URL]'),
-    (r'amqp://[^\s]+', '[REDACTED: AMQP URL]'),
     
-    # Credentials in URLs
-    (r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}:[^\s@]+@', '[REDACTED: Credential in URL]'),
+    # Private keys
+    (r'-----BEGIN (?:RSA |DSA |EC |OPENSSH )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |DSA |EC |OPENSSH )?PRIVATE KEY-----', '[REDACTED: Private Key]'),
     
-    # Generic patterns (case-insensitive) - must come last
-    (r'password\s*[=:]\s*["\']?[^\s"\']{8,}["\']?', '[REDACTED: Password]', re.IGNORECASE),
-    (r'api[_-]?key\s*[=:]\s*["\']?[a-zA-Z0-9_-]{16,}["\']?', '[REDACTED: API Key]', re.IGNORECASE),
-    (r'secret\s*[=:]\s*["\']?[a-zA-Z0-9_-]{16,}["\']?', '[REDACTED: Secret]', re.IGNORECASE),
-    (r'token\s*[=:]\s*["\']?[a-zA-Z0-9_.-]{20,}["\']?', '[REDACTED: Token]', re.IGNORECASE),
-    (r'auth_token\s*[=:]\s*["\']?[a-zA-Z0-9_.-]{20,}["\']?', '[REDACTED: Auth Token]', re.IGNORECASE),
-    (r'access_token\s*[=:]\s*["\']?[a-zA-Z0-9_.-]{20,}["\']?', '[REDACTED: Access Token]', re.IGNORECASE),
-    (r'refresh_token\s*[=:]\s*["\']?[a-zA-Z0-9_.-]{20,}["\']?', '[REDACTED: Refresh Token]', re.IGNORECASE),
+    # Passwords in URLs
+    (r'://[^:]+:[^@]+@', '://[REDACTED]@'),
 ]
 
 
 def redact_secrets(text):
-    """Redact sensitive information from text.
-    
-    Args:
-        text: The text to redact secrets from.
-        
-    Returns:
-        Text with secrets replaced by [REDACTED: ...] placeholders.
-    """
+    """Redact sensitive information from text."""
     if not text:
         return text
-    
-    for pattern in SECRET_PATTERNS:
-        try:
-            if len(pattern) == 3:
-                regex, replacement, flags = pattern
-                text = re.sub(regex, replacement, text, flags=flags)
-            else:
-                regex, replacement = pattern
-                text = re.sub(regex, replacement, text)
-        except Exception:
-            # Skip patterns that fail to compile/match
-            pass
-    
+    for pattern, replacement in SECRET_PATTERNS:
+        text = re.sub(pattern, replacement, text)
     return text
-
-
-def format_code_block(code, language=""):
-    """Format code as a markdown code block.
-    
-    Args:
-        code: The code content.
-        language: Optional language identifier for syntax highlighting.
-        
-    Returns:
-        Markdown-formatted code block string.
-    """
-    if not code:
-        return ""
-    lang = language.lower() if language else ""
-    return f"\n```{lang}\n{code}\n```\n"
-
-
-def to_kebab_case(text):
-    """Convert text to kebab-case.
-    
-    Args:
-        text: Input text to convert.
-        
-    Returns:
-        Kebab-case version of the text.
-    """
-    # Replace spaces and underscores with hyphens
-    text = re.sub(r'[\s_]+', '-', text)
-    # Convert to lowercase
-    text = text.lower()
-    # Remove any characters that aren't alphanumeric or hyphens
-    text = re.sub(r'[^a-z0-9-]', '', text)
-    # Remove multiple consecutive hyphens
-    text = re.sub(r'-+', '-', text)
-    # Remove leading/trailing hyphens
-    text = text.strip('-')
-    return text
-
-
-def get_obsidian_vault():
-    """Get the Obsidian vault path.
-    
-    Returns:
-        Path to the Obsidian vault.
-    """
-    # Could be extended to read from a config file
-    return DEFAULT_OBSIDIAN_VAULT

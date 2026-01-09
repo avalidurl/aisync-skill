@@ -5,7 +5,7 @@
 A skill that backs up your AI coding sessions to an Obsidian vault as searchable markdown notes — with automatic secret redaction. Supports **12 AI coding agents**.
 
 ![License](https://img.shields.io/badge/license-Unlicense-blue.svg)
-![Platform](https://img.shields.io/badge/platform-macOS-lightgrey.svg)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)
 ![Python](https://img.shields.io/badge/python-3.8+-green.svg)
 ![Providers](https://img.shields.io/badge/providers-12-blue.svg)
 
@@ -168,9 +168,30 @@ Then trigger with `@aisync` or `$aisync`.
 
 ## Requirements
 
-- macOS (uses launchd for scheduling)
+- **macOS, Linux, or Windows**
 - Python 3.8+
 - Obsidian with a vault configured
+
+## Cross-Platform Support
+
+| Platform | Scheduler | Auto-Install |
+|----------|-----------|--------------|
+| **macOS** | launchd | ✅ Automatic |
+| **Linux** | systemd/cron | ✅ Automatic |
+| **Windows** | Task Scheduler | 📋 Manual (see install output) |
+| **WSL** | systemd/cron | ✅ Automatic |
+
+### Obsidian Vault Detection
+
+The sync scripts auto-detect your Obsidian vault. To specify manually:
+
+```bash
+# Option 1: Environment variable
+export OBSIDIAN_VAULT="/path/to/your/vault"
+
+# Option 2: Config file
+echo 'OBSIDIAN_VAULT="/path/to/your/vault"' > ~/.aisync.conf
+```
 
 ## Not Supported (Cloud-Only)
 
