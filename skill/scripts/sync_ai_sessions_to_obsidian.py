@@ -2,8 +2,16 @@
 """
 Unified AI Sessions Sync to Obsidian
 =====================================
-Syncs Claude Code, Codex, and Cursor sessions to Zettelkasten vault.
+Syncs AI coding sessions from multiple tools to Zettelkasten vault.
 Runs automatically via launchd every 15 minutes.
+
+Supported tools:
+- Claude Code (Anthropic CLI)
+- Codex CLI (OpenAI)
+- Cursor IDE
+- Aider (CLI agent)
+- Cline (VS Code extension)
+- Gemini CLI (Google)
 
 Manual run: python3 ~/sync_ai_sessions_to_obsidian.py
 """
@@ -16,10 +24,24 @@ from datetime import datetime
 HOME = Path.home()
 LOG_FILE = HOME / ".ai-sessions-sync.log"
 
+# Core providers (always run)
 SYNC_SCRIPTS = [
     HOME / "sync_claude_code_to_obsidian.py",
     HOME / "sync_codex_to_obsidian.py", 
     HOME / "sync_cursor_to_obsidian.py",
+]
+
+# Additional providers (run if script exists)
+OPTIONAL_SCRIPTS = [
+    HOME / "sync_aider_to_obsidian.py",
+    HOME / "sync_cline_to_obsidian.py",
+    HOME / "sync_gemini_cli_to_obsidian.py",
+    HOME / "sync_continue_to_obsidian.py",
+    HOME / "sync_copilot_chat_to_obsidian.py",
+    HOME / "sync_roo_code_to_obsidian.py",
+    HOME / "sync_windsurf_to_obsidian.py",
+    HOME / "sync_zed_ai_to_obsidian.py",
+    HOME / "sync_amp_to_obsidian.py",
 ]
 
 def log(message):
@@ -69,14 +91,17 @@ def run_sync(script_path):
 def main():
     log("🔄 Starting AI Sessions Sync...")
     
+    # Combine core and optional scripts
+    all_scripts = SYNC_SCRIPTS + [s for s in OPTIONAL_SCRIPTS if s.exists()]
+    
     success_count = 0
-    for script in SYNC_SCRIPTS:
+    for script in all_scripts:
         name = script.stem.replace('sync_', '').replace('_to_obsidian', '').replace('_', ' ').title()
         log(f"  📂 {name}...")
         if run_sync(script):
             success_count += 1
     
-    log(f"✅ Sync complete ({success_count}/{len(SYNC_SCRIPTS)} successful)")
+    log(f"✅ Sync complete ({success_count}/{len(all_scripts)} providers)")
 
 if __name__ == "__main__":
     main()

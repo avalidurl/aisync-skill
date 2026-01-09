@@ -2,27 +2,38 @@
 
 **Automatically sync AI coding sessions to Obsidian**
 
-A skill that backs up your Claude Code, Codex CLI, and Cursor chat sessions to an Obsidian vault as searchable markdown notes — with automatic secret redaction.
+A skill that backs up your AI coding sessions to an Obsidian vault as searchable markdown notes — with automatic secret redaction. Supports **12 AI coding agents**.
 
 ![License](https://img.shields.io/badge/license-Unlicense-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-macOS-lightgrey.svg)
 ![Python](https://img.shields.io/badge/python-3.8+-green.svg)
+![Providers](https://img.shields.io/badge/providers-12-blue.svg)
 
 ## Features
 
-- 🔄 **Automatic syncing** every 15 minutes via macOS launchd
+- 🔄 **Automatic syncing** via macOS launchd (configurable interval)
 - 🔒 **Secret redaction** - API keys, tokens, passwords automatically removed
 - 📁 **Organized output** - Sessions sorted by tool and date
 - 🔍 **Searchable** - Full markdown with frontmatter for Obsidian queries
 - ⚡ **Lightweight** - Minimal resource usage, runs in background
+- 🎮 **CLI management** - Easy commands to control sync
 
-## Supported Sources
+## Supported AI Tools (12)
 
-| Tool | Session Location | Output |
-|------|-----------------|--------|
-| Claude Code | `~/.claude/projects/**/*.jsonl` | `ai-sessions/claude-code-sessions/` |
-| Codex CLI | `~/.codex/sessions/**/*.jsonl` | `ai-sessions/codex-sessions/` |
-| Cursor | `~/.cursor/projects/**/agent-transcripts/*.txt` | `ai-sessions/cursor-sessions/` |
+| Tool | Session Location | Output Folder |
+|------|-----------------|---------------|
+| **Claude Code** | `~/.claude/projects/**/*.jsonl` | `claude-code-sessions/` |
+| **Codex CLI** | `~/.codex/sessions/**/*.jsonl` | `codex-sessions/` |
+| **Cursor** | `~/.cursor/projects/**/agent-transcripts/*.txt` | `cursor-sessions/` |
+| **Aider** | `~/.aider.chat.history.md` | `aider-sessions/` |
+| **Cline** | VS Code globalStorage | `cline-sessions/` |
+| **Gemini CLI** | `~/.gemini/` | `gemini-cli-sessions/` |
+| **Continue.dev** | `~/.continue/sessions/` | `continue-sessions/` |
+| **GitHub Copilot** | VS Code globalStorage | `copilot-chat-sessions/` |
+| **Roo Code** | VS Code globalStorage | `roo-code-sessions/` |
+| **Windsurf** | `~/Library/App Support/Windsurf` | `windsurf-sessions/` |
+| **Zed AI** | `~/.config/zed/conversations/` | `zed-ai-sessions/` |
+| **Amp (Sourcegraph)** | VS Code globalStorage | `amp-sessions/` |
 
 ## Installation
 
@@ -38,22 +49,41 @@ cd aisync-skill
 ```
 
 This will:
-1. Copy sync scripts to your home directory
-2. Create a launchd agent for automatic syncing
-3. Start syncing every 15 minutes
-4. Run an initial sync immediately
+1. Copy all sync scripts to your home directory
+2. Install the `aisync` CLI tool
+3. Create a launchd agent for automatic syncing
+4. Start syncing every 15 minutes
+5. Run an initial sync immediately
 
-### Manual Install
+## CLI Commands
+
+After installation, use the `aisync` command:
 
 ```bash
-# Copy scripts
-cp skill/scripts/sync_*.py ~/
+# Check status
+aisync status
 
-# Make executable
-chmod +x ~/sync_*.py
+# Run sync now
+aisync sync
 
-# Run manually
-python3 ~/sync_ai_sessions_to_obsidian.py
+# Set sync interval (in minutes)
+aisync interval 5     # Every 5 minutes
+aisync interval 30    # Every 30 minutes
+aisync interval 60    # Every hour
+
+# List all providers
+aisync providers
+
+# View recent logs
+aisync logs
+aisync logs 50        # Last 50 entries
+
+# Enable/disable background sync
+aisync enable
+aisync disable
+
+# Show help
+aisync help
 ```
 
 ## Configuration
@@ -73,57 +103,12 @@ OBSIDIAN_VAULT = Path.home() / "path/to/your/vault"
 
 ### Sync Interval
 
-Default is 15 minutes (900 seconds). To change, edit the plist:
+Use the CLI to change the interval:
 
 ```bash
-# Open the plist
-nano ~/Library/LaunchAgents/com.$(whoami).ai-sessions-sync.plist
-
-# Change StartInterval value (in seconds)
-# 300 = 5 min, 900 = 15 min, 1800 = 30 min, 3600 = 1 hour
-```
-
-Then reload:
-```bash
-launchctl unload ~/Library/LaunchAgents/com.$(whoami).ai-sessions-sync.plist
-launchctl load ~/Library/LaunchAgents/com.$(whoami).ai-sessions-sync.plist
-```
-
-## Usage
-
-### Manual Sync
-
-```bash
-# Sync all sources
-python3 ~/sync_ai_sessions_to_obsidian.py
-
-# Sync individual sources
-python3 ~/sync_claude_code_to_obsidian.py
-python3 ~/sync_codex_to_obsidian.py
-python3 ~/sync_cursor_to_obsidian.py
-```
-
-### Check Status
-
-```bash
-# Is auto-sync running?
-launchctl list | grep ai-sessions-sync
-
-# View sync log
-cat ~/.ai-sessions-sync.log
-
-# View detailed output
-tail -f ~/.ai-sessions-sync-stdout.log
-```
-
-### Stop/Start Auto-Sync
-
-```bash
-# Stop
-launchctl unload ~/Library/LaunchAgents/com.$(whoami).ai-sessions-sync.plist
-
-# Start
-launchctl load ~/Library/LaunchAgents/com.$(whoami).ai-sessions-sync.plist
+aisync interval 5    # Sync every 5 minutes
+aisync interval 15   # Sync every 15 minutes (default)
+aisync interval 60   # Sync every hour
 ```
 
 ## Output Format
@@ -160,8 +145,9 @@ Here's how to fix it...
 
 All sync scripts automatically redact:
 
-- API keys (OpenAI, Anthropic, GitHub, AWS, etc.)
+- API keys (OpenAI, Anthropic, GitHub, AWS, Google, Sourcegraph, etc.)
 - Bearer tokens and JWTs
+- OAuth tokens
 - Database connection strings
 - Passwords and secrets in config files
 - Private keys and certificates
@@ -186,6 +172,13 @@ Then trigger with `@aisync` or `$aisync`.
 - Python 3.8+
 - Obsidian with a vault configured
 
+## Not Supported (Cloud-Only)
+
+These tools don't store sessions locally and cannot be synced:
+- **Devin** - Runs entirely in cloud IDE
+- **Replit Agent** - Cloud-based
+- **v0.dev / bolt.new** - Web-based
+
 ## License
 
 **Public Domain (Unlicense)** - No copyright. Do whatever you want with it. See [LICENSE](LICENSE).
@@ -193,3 +186,11 @@ Then trigger with `@aisync` or `$aisync`.
 ## Contributing
 
 Contributions welcome! Please open an issue or PR.
+
+### Adding a New Provider
+
+1. Create `sync_<provider>_to_obsidian.py` based on existing scripts
+2. Add to `OPTIONAL_SCRIPTS` in `sync_ai_sessions_to_obsidian.py`
+3. Add to `PROVIDERS` list in `aisync` CLI
+4. Update `install.sh` to copy the new script
+5. Update this README
