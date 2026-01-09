@@ -51,79 +51,96 @@ def redact_secrets(text):
     return text
 
 def parse_transcript(file_path):
-    """Parse a Cursor agent transcript file."""
+    """Parse a Cursor agent transcript file into exchanges (user + assistant pairs)."""
     with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
         content = f.read()
     
     messages = []
     
-    # Split by user/assistant turns
-    # Format: "user:\n...\n\nA:\n..."
-    parts = re.split(r'\n(?=user:|\nA:)', content)
+    # Split by user turns - each user: starts a new exchange
+    user_splits = re.split(r'\n(?=user:)', content)
     
-    for part in parts:
-        part = part.strip()
-        if not part:
+    for section in user_splits:
+        section = section.strip()
+        if not section or not section.startswith('user:'):
             continue
         
-        if part.startswith('user:'):
-            # User message
-            text = part[5:].strip()
-            # Skip system messages
-            if text.startswith('<external_links>'):
-                # Extract just the user_query
-                match = re.search(r'<user_query>\s*(.*?)\s*</user_query>', text, re.DOTALL)
-                if match:
-                    text = match.group(1).strip()
-                else:
-                    continue
-            if text:
-                messages.append({
-                    'role': 'user',
-                    'content': redact_secrets(text)
-                })
+        # Split this section into user part and assistant parts
+        parts = re.split(r'\n\n(?=assistant:)', section, maxsplit=1)
         
-        elif part.startswith('A:') or part.startswith('\nA:'):
-            # Assistant message
-            text = re.sub(r'^A:', '', part).strip()
+        # Parse user message
+        user_part = parts[0]
+        user_text = user_part[5:].strip()  # Remove 'user:'
+        
+        # Extract user_query if present
+        if '<user_query>' in user_text:
+            match = re.search(r'<user_query>\s*(.*?)\s*</user_query>', user_text, re.DOTALL)
+            if match:
+                user_text = match.group(1).strip()
+            else:
+                continue
+        
+        if not user_text or len(user_text) < 3:
+            continue
             
-            # Parse tool calls and thinking
-            formatted_parts = []
+        messages.append({
+            'role': 'user',
+            'content': redact_secrets(user_text)
+        })
+        
+        # Parse all assistant blocks as ONE response
+        if len(parts) > 1:
+            assistant_section = parts[1]
+            # Get all assistant blocks
+            assistant_blocks = re.findall(r'assistant:\s*(.*?)(?=\nassistant:|\Z)', assistant_section, re.DOTALL)
             
-            # Handle [Thinking] blocks
-            thinking_matches = re.findall(r'\[Thinking\](.*?)(?=\[Tool call\]|\[Tool result\]|$)', text, re.DOTALL)
-            for thinking in thinking_matches:
-                if thinking.strip():
-                    formatted_parts.append(f"> 💭 **Thinking:**\n> {thinking.strip()[:500]}...")
+            all_assistant_content = []
+            for block in assistant_blocks:
+                block = block.strip()
+                if not block:
+                    continue
+                    
+                # Parse and format the block
+                formatted = format_assistant_block(block)
+                if formatted:
+                    all_assistant_content.append(formatted)
             
-            # Handle [Tool call] blocks
-            tool_matches = re.findall(r'\[Tool call\]\s*(\w+)\s*(.*?)(?=\[Tool call\]|\[Tool result\]|A:|\nuser:|$)', text, re.DOTALL)
-            for tool_name, tool_args in tool_matches:
-                args_clean = tool_args.strip()[:300]
-                formatted_parts.append(f"**🔧 Tool:** `{tool_name}`\n```\n{redact_secrets(args_clean)}\n```")
-            
-            # Handle [Tool result] blocks
-            result_matches = re.findall(r'\[Tool result\]\s*(\w+)\s*(.*?)(?=\[Tool call\]|\[Tool result\]|A:|\nuser:|$)', text, re.DOTALL)
-            for result_name, result_content in result_matches:
-                content_clean = result_content.strip()[:1000]
-                formatted_parts.append(f"**📤 Result:** `{result_name}`\n```\n{redact_secrets(content_clean)}\n```")
-            
-            # Get remaining text (actual response)
-            clean_text = re.sub(r'\[Thinking\].*?(?=\[Tool|\n\n|$)', '', text, flags=re.DOTALL)
-            clean_text = re.sub(r'\[Tool call\].*?(?=\[Tool|\n\n|$)', '', clean_text, flags=re.DOTALL)
-            clean_text = re.sub(r'\[Tool result\].*?(?=\[Tool|\n\n|$)', '', clean_text, flags=re.DOTALL)
-            clean_text = clean_text.strip()
-            
-            if clean_text:
-                formatted_parts.append(redact_secrets(clean_text))
-            
-            if formatted_parts:
+            if all_assistant_content:
+                # Combine all assistant blocks into one response
                 messages.append({
-                    'role': 'assistant',
-                    'content': '\n\n'.join(formatted_parts)
+                    'role': 'assistant', 
+                    'content': '\n\n---\n\n'.join(all_assistant_content)
                 })
     
     return messages
+
+def format_assistant_block(text):
+    """Format an assistant block with tool calls and thinking."""
+    formatted_parts = []
+    
+    # Handle [Thinking] blocks - just get the last thinking
+    thinking_matches = re.findall(r'\[Thinking\](.*?)(?=\[Tool call\]|\[Tool result\]|$)', text, re.DOTALL)
+    if thinking_matches:
+        last_thinking = thinking_matches[-1].strip()[:500]
+        if last_thinking:
+            formatted_parts.append(f"> 💭 **Thinking:** {last_thinking}...")
+    
+    # Handle [Tool call] blocks
+    tool_matches = re.findall(r'\[Tool call\]\s*(\w+)\s*(.*?)(?=\[Tool call\]|\[Tool result\]|\nuser:|$)', text, re.DOTALL)
+    for tool_name, tool_args in tool_matches:
+        args_clean = tool_args.strip()[:200]
+        formatted_parts.append(f"**🔧 Tool:** `{tool_name}`")
+    
+    # Get clean response text (remove thinking and tool blocks)
+    clean_text = re.sub(r'\[Thinking\].*?(?=\[Tool|\n\n|$)', '', text, flags=re.DOTALL)
+    clean_text = re.sub(r'\[Tool call\].*?(?=\[Tool|\n\n|$)', '', clean_text, flags=re.DOTALL)
+    clean_text = re.sub(r'\[Tool result\].*?(?=\[Tool|\n\n|$)', '', clean_text, flags=re.DOTALL)
+    clean_text = clean_text.strip()
+    
+    if clean_text and len(clean_text) > 10:
+        formatted_parts.append(redact_secrets(clean_text))
+    
+    return '\n\n'.join(formatted_parts) if formatted_parts else None
 
 def get_project_name(file_path):
     """Extract project name from file path."""
@@ -252,16 +269,23 @@ def main():
             if source_mtime <= existing_file.stat().st_mtime:
                 continue  # Skip - no changes
             
-            # APPEND mode: Read existing note, count messages, append only new ones
+            # APPEND mode: Read existing note, count exchanges, append only new ones
             existing_content = existing_file.read_text(encoding='utf-8')
             
-            # Count existing message blocks (## 👤 User or ## 🤖 Cursor)
-            existing_msg_count = existing_content.count('## 👤 User') + existing_content.count('## 🤖 Cursor')
-            new_msg_count = len(messages)
+            # Count by USER exchanges (headers at line start only)
+            existing_user_count = len(re.findall(r'^## 👤 User$', existing_content, re.MULTILINE))
+            source_user_count = sum(1 for m in messages if m['role'] == 'user')
             
-            if new_msg_count > existing_msg_count:
-                # Append only NEW messages
-                new_messages = messages[existing_msg_count:]
+            if source_user_count > existing_user_count:
+                # Find new exchanges: messages after the last synced user exchange
+                # Build list of exchange indices
+                new_messages = []
+                user_idx = 0
+                for msg in messages:
+                    if msg['role'] == 'user':
+                        user_idx += 1
+                    if user_idx > existing_user_count:
+                        new_messages.append(msg)
                 
                 # Find the sync footer and insert before it, or append at end
                 footer_marker = "\n---\n*Session exported from Cursor"
