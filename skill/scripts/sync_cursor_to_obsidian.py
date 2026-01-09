@@ -242,21 +242,58 @@ def main():
         existing_files = list(output_path.glob(f"*{session_id}*.md"))
         source_mtime = file_path.stat().st_mtime
         
+        note_path = output_path / f"{filename}.md"
+        
         if existing_files:
+            # Use the existing file (prefer exact match, else first found)
+            existing_file = next((f for f in existing_files if f.name == f"{filename}.md"), existing_files[0])
+            
             # Check if source has been modified since last sync
-            newest_output_mtime = max(f.stat().st_mtime for f in existing_files)
-            if source_mtime <= newest_output_mtime:
+            if source_mtime <= existing_file.stat().st_mtime:
                 continue  # Skip - no changes
             
-            # Delete ALL old versions with this session ID
-            for old_file in existing_files:
-                old_file.unlink()
+            # APPEND mode: Read existing note, count messages, append only new ones
+            existing_content = existing_file.read_text(encoding='utf-8')
+            
+            # Count existing message blocks (## 👤 User or ## 🤖 Cursor)
+            existing_msg_count = existing_content.count('## 👤 User') + existing_content.count('## 🤖 Cursor')
+            new_msg_count = len(messages)
+            
+            if new_msg_count > existing_msg_count:
+                # Append only NEW messages
+                new_messages = messages[existing_msg_count:]
+                
+                # Find the sync footer and insert before it, or append at end
+                footer_marker = "\n---\n*Session exported from Cursor"
+                
+                append_content = ""
+                for msg in new_messages:
+                    role = msg['role']
+                    content = msg['content']
+                    if not content or not content.strip():
+                        continue
+                    if role == 'user':
+                        append_content += f"## 👤 User\n\n{content}\n\n---\n\n"
+                    elif role == 'assistant':
+                        append_content += f"## 🤖 Cursor\n\n{content}\n\n---\n\n"
+                
+                if append_content:
+                    if footer_marker in existing_content:
+                        # Insert before footer
+                        updated_content = existing_content.replace(footer_marker, append_content + footer_marker)
+                    else:
+                        # Append at end
+                        updated_content = existing_content + "\n" + append_content
+                    
+                    existing_file.write_text(updated_content, encoding='utf-8')
+                    new_count += 1
+                    print(f"  ✅ {existing_file.name} (+{len(new_messages)} messages)")
+            continue
         
-        # Write markdown
-        note_path = output_path / f"{filename}.md"
+        # New session - create file
         note_path.write_text(md_content, encoding='utf-8')
         new_count += 1
-        print(f"  ✅ {filename}")
+        print(f"  ✅ {filename} (new)")
     
     print(f"\n✅ Synced {new_count} sessions to {OUTPUT_FOLDER}/")
 
