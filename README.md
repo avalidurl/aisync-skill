@@ -1,18 +1,18 @@
-# aisync v2.0.0
+# aisync v2.2.0
 
 **Sync AI coding sessions to Obsidian, JSON, HTML, or SQLite**
 
-A modular library that backs up your AI coding sessions with analytics, search, and automatic secret redaction. Supports **12 AI coding agents** and **5 output formats**.
+A modular library that backs up your AI coding sessions with analytics, search, and automatic secret redaction. Supports **14 AI coding agents** and **5 output formats**.
 
 ![License](https://img.shields.io/badge/license-Unlicense-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)
 ![Python](https://img.shields.io/badge/python-3.8+-green.svg)
-![Providers](https://img.shields.io/badge/providers-12-blue.svg)
+![Providers](https://img.shields.io/badge/providers-14-blue.svg)
 ![Outputs](https://img.shields.io/badge/outputs-5-green.svg)
 
 ## ✨ Features
 
-- 🔄 **12 AI Tools** - Claude Code, Codex, Cursor, Aider, Cline, Gemini CLI, Continue, Copilot, Roo Code, Windsurf, Zed AI, Amp
+- 🔄 **14 AI Tools** - Claude Code, Codex, Cursor, Aider, Cline, Gemini CLI, Continue, Copilot, Roo Code, Windsurf, Zed AI, Amp, OpenCode, OpenRouter
 - 📤 **5 Outputs** - Obsidian, JSON, JSONL, HTML, SQLite
 - 🔒 **Secret Redaction** - 20+ patterns (API keys, tokens, passwords)
 - 📊 **Analytics** - Token usage, language detection, activity patterns
@@ -42,7 +42,7 @@ aisync stats
 ## 📋 CLI Commands
 
 ```
-🤖 AI Sessions Sync v2.0.0
+🤖 AI Sessions Sync v2.2.0
 
 COMMANDS:
   sync       Sync sessions to output format(s)
@@ -83,7 +83,7 @@ aisync report                # Detailed report
 aisync report -o ~/report.txt
 ```
 
-## 🔧 Supported AI Tools (12)
+## 🔧 Supported AI Tools (14)
 
 | Tool | Session Location | Status |
 |------|------------------|--------|
@@ -99,6 +99,8 @@ aisync report -o ~/report.txt
 | **Windsurf** | Windsurf app data | ✅ |
 | **Zed AI** | `~/.config/zed/conversations/` | ✅ |
 | **Amp (Sourcegraph)** | VS Code globalStorage | ✅ |
+| **OpenCode** | `~/.local/share/opencode/` | ✅ |
+| **OpenRouter** | `~/Downloads/openrouter*.json` | ✅ |
 
 ## 📤 Output Formats (5)
 
@@ -207,7 +209,7 @@ skill/
 │   ├── models.py      # Data models
 │   ├── redact.py      # Secret redaction
 │   ├── search.py      # Search
-│   ├── parsers/       # 12 provider parsers
+│   ├── parsers/       # 14 provider parsers
 │   ├── outputs/       # 5 output plugins
 │   └── analytics/     # Analytics & insights
 └── scripts/

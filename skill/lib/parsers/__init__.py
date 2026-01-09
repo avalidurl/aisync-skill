@@ -15,6 +15,8 @@ from .roo import RooCodeParser
 from .windsurf import WindsurfParser
 from .zed import ZedAIParser
 from .amp import AmpParser
+from .opencode import OpenCodeParser
+from .openrouter import OpenRouterParser
 
 from typing import Dict, Type
 from ..models import Provider
@@ -33,6 +35,8 @@ PARSERS: Dict[Provider, Type[BaseParser]] = {
     Provider.WINDSURF: WindsurfParser,
     Provider.ZED_AI: ZedAIParser,
     Provider.AMP: AmpParser,
+    Provider.OPENCODE: OpenCodeParser,
+    Provider.OPENROUTER: OpenRouterParser,
 }
 
 
@@ -63,6 +67,8 @@ __all__ = [
     'WindsurfParser',
     'ZedAIParser',
     'AmpParser',
+    'OpenCodeParser',
+    'OpenRouterParser',
     'PARSERS',
     'get_parser',
     'get_all_parsers',

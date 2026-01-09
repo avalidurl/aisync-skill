@@ -1,13 +1,13 @@
 ---
 name: aisync
-description: Sync AI coding sessions from 12 tools (Claude Code, Codex, Cursor, Aider, Cline, Gemini CLI, Continue, Copilot, Roo Code, Windsurf, Zed AI, Amp) to Obsidian vault as markdown notes. Use when user wants to backup, export, or sync their AI chat sessions to Obsidian, set up automatic syncing, check sync status, or troubleshoot sync issues. Handles secret redaction automatically. Cross-platform (macOS, Linux, Windows).
+description: Sync AI coding sessions from 14 tools (Claude Code, Codex, Cursor, Aider, Cline, Gemini CLI, Continue, Copilot, Roo Code, Windsurf, Zed AI, Amp, OpenCode, OpenRouter) to Obsidian vault as markdown notes. Use when user wants to backup, export, or sync their AI chat sessions to Obsidian, set up automatic syncing, check sync status, or troubleshoot sync issues. Handles secret redaction automatically. Cross-platform (macOS, Linux, Windows).
 ---
 
-# AI Sessions Sync v2.0.0
+# AI Sessions Sync v2.2.0
 
-Sync AI coding sessions from **12 different tools** to multiple output formats with analytics, search, and automatic secret redaction.
+Sync AI coding sessions from **14 different tools** to multiple output formats with analytics, search, and automatic secret redaction.
 
-## Supported Providers (12)
+## Supported Providers (14)
 
 | Provider | Location | Output Folder |
 |----------|----------|---------------|
@@ -23,6 +23,8 @@ Sync AI coding sessions from **12 different tools** to multiple output formats w
 | Windsurf | Codeium/Windsurf app data | `windsurf-sessions/` |
 | Zed AI | `~/.config/zed/conversations/` | `zed-ai-sessions/` |
 | Amp (Sourcegraph) | VS Code globalStorage | `amp-sessions/` |
+| OpenCode | `~/.local/share/opencode/` | `opencode-sessions/` |
+| OpenRouter | `~/Downloads/openrouter*.json` (exports) | `openrouter-sessions/` |
 
 ## Output Formats (5)
 

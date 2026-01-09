@@ -24,6 +24,8 @@ class Provider(Enum):
     WINDSURF = "windsurf"
     ZED_AI = "zed-ai"
     AMP = "amp"
+    OPENCODE = "opencode"
+    OPENROUTER = "openrouter"
 
 
 class MessageRole(Enum):

@@ -117,3 +117,24 @@ class BaseParser(ABC):
             pass
         
         return results
+    
+    def get_file_created_at(self, path: Path):
+        """
+        Get file creation time, falling back to mtime if unavailable.
+        Uses birthtime on macOS, ctime on Linux (which may be change time).
+        
+        Args:
+            path: Path to file
+            
+        Returns:
+            datetime of file creation
+        """
+        from datetime import datetime as dt
+        stat = path.stat()
+        
+        # Try birthtime first (macOS)
+        if hasattr(stat, 'st_birthtime') and stat.st_birthtime > 0:
+            return dt.fromtimestamp(stat.st_birthtime)
+        
+        # Fall back to mtime (most reliable cross-platform)
+        return dt.fromtimestamp(stat.st_mtime)

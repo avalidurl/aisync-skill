@@ -27,18 +27,38 @@ class ObsidianOutput(BaseOutput):
         filename = f"{self.get_session_filename(session)}.md"
         return self.output_dir / folder / filename
     
+    def get_session_folder(self, session: Session) -> Path:
+        """Get output folder for session's provider."""
+        folder = f"{session.provider.value}-sessions"
+        return self.output_dir / folder
+    
+    def find_existing_by_session_id(self, session: Session) -> list:
+        """Find all existing files with same session ID."""
+        folder = self.get_session_folder(session)
+        if not folder.exists():
+            return []
+        
+        # Find files containing this session ID
+        matching = []
+        for f in folder.glob("*.md"):
+            if session.id in f.name:
+                matching.append(f)
+        return matching
+    
     def session_exists(self, session: Session) -> bool:
-        """Check if session file exists."""
-        return self.get_session_path(session).exists()
+        """Check if session file exists (by session ID, not exact filename)."""
+        return len(self.find_existing_by_session_id(session)) > 0
     
     def needs_update(self, session: Session) -> bool:
         """Check if session needs update based on mtime."""
-        path = self.get_session_path(session)
-        if not path.exists():
+        existing = self.find_existing_by_session_id(session)
+        if not existing:
             return True
         
+        # Check if source is newer than any existing file
         if session.source_mtime:
-            return session.source_mtime > path.stat().st_mtime
+            newest_existing = max(f.stat().st_mtime for f in existing)
+            return session.source_mtime > newest_existing
         
         return False
     
@@ -47,9 +67,10 @@ class ObsidianOutput(BaseOutput):
         path = self.get_session_path(session)
         self.ensure_dir(path.parent)
         
-        # Delete if exists (for updates)
-        if path.exists():
-            path.unlink()
+        # Delete ALL existing files with this session ID (handles filename changes)
+        existing = self.find_existing_by_session_id(session)
+        for old_file in existing:
+            old_file.unlink()
         
         markdown = self.generate_markdown(session)
         path.write_text(markdown, encoding='utf-8')
