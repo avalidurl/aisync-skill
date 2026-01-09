@@ -207,10 +207,15 @@ def main():
         filename = f"codex-{date}-{time}-{session_id}.md"
         output_path = OUTPUT_DIR / filename
         
-        # Check if already synced
+        # Check if already synced AND source hasn't been modified
+        # This ensures continuing sessions get updated with new messages
         if output_path.exists():
-            skipped += 1
-            continue
+            source_mtime = session_path.stat().st_mtime
+            output_mtime = output_path.stat().st_mtime
+            if source_mtime <= output_mtime:
+                skipped += 1
+                continue
+            # Source was modified after last sync - will re-sync
         
         # Generate markdown
         markdown = session_to_markdown(session_meta, messages, session_path)

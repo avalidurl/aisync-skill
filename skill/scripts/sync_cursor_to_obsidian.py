@@ -205,11 +205,16 @@ def main():
         date_kebab = title_date.replace(' ', '-')
         filename = f"cursor-{date_kebab}-{project_short}-{session_id}".lower()
         
-        # Check if already synced (skip existing files)
+        # Check if already synced AND source hasn't been modified
+        # This ensures continuing sessions get updated with new messages
         note_path = output_path / f"{filename}.md"
         if note_path.exists():
-            skipped += 1
-            continue
+            source_mtime = file_path.stat().st_mtime
+            output_mtime = note_path.stat().st_mtime
+            if source_mtime <= output_mtime:
+                skipped += 1
+                continue
+            # Source was modified after last sync - will re-sync
         
         # Write markdown
         note_path.write_text(md_content, encoding='utf-8')
