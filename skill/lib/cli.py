@@ -36,20 +36,20 @@ HELP_TEXT = """
 Sync AI coding sessions from 12 tools to multiple output formats.
 
 COMMANDS:
-  sync       Sync sessions to output format(s)
-  search     Search across all sessions  
-  stats      Show usage statistics
-  report     Generate detailed report
-  status     Show detected sessions
-  providers  List supported AI tools
-  outputs    List output formats
-  config     Get/set configuration
+  backup     Export sessions to output format(s)
+  find       Search across all sessions  
+  metrics    Show usage statistics
+  insights   Generate detailed report
+  check      Show detected sessions & status
+  tools      List supported AI tools
+  formats    List available output formats
+  set        Get/set configuration
 
 QUICK START:
-  aisync sync                    # Sync to Obsidian
-  aisync sync -f json html       # Sync to JSON + HTML
-  aisync search "function"       # Search sessions
-  aisync stats                   # View statistics
+  aisync backup                  # Export to Obsidian
+  aisync backup -f json html     # Export to JSON + HTML
+  aisync find "function"         # Search sessions
+  aisync metrics                 # View statistics
 
 SUPPORTED TOOLS:
   Claude Code, Codex CLI, Cursor, Aider, Cline,
@@ -80,96 +80,96 @@ def main():
     
     subparsers = parser.add_subparsers(dest='command', help='Commands')
     
-    # sync command
-    sync_parser = subparsers.add_parser('sync', 
-        help='Sync sessions to output format(s)',
-        description='Sync AI coding sessions to Obsidian, JSON, HTML, or SQLite.',
+    # backup command (was: sync)
+    backup_parser = subparsers.add_parser('backup', 
+        help='Export sessions to output format(s)',
+        description='Export AI coding sessions to Obsidian, JSON, HTML, or SQLite.',
         epilog='''
 Examples:
-  aisync sync                          Sync to Obsidian (auto-detected)
-  aisync sync -o ~/ai-sessions         Custom output directory
-  aisync sync -f obsidian json html    Multiple output formats
-  aisync sync -p claude-code cursor    Only specific providers
-  aisync sync -f sqlite --no-analyze   SQLite without analytics
+  aisync backup                          Export to Obsidian (auto-detected)
+  aisync backup -o ~/ai-sessions         Custom output directory
+  aisync backup -f obsidian json html    Multiple output formats
+  aisync backup -p claude-code cursor    Only specific providers
+  aisync backup -f sqlite --no-analyze   SQLite without analytics
 ''',
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    sync_parser.add_argument('-o', '--output', metavar='DIR',
+    backup_parser.add_argument('-o', '--output', metavar='DIR',
                             help='Output directory (default: auto-detect Obsidian vault)')
-    sync_parser.add_argument('-f', '--format', nargs='+', default=['obsidian'],
+    backup_parser.add_argument('-f', '--format', nargs='+', default=['obsidian'],
                             metavar='FMT',
                             help='Output format(s): obsidian, json, jsonl, html, sqlite')
-    sync_parser.add_argument('-p', '--provider', nargs='+', metavar='PROV',
-                            help='Only sync specific provider(s)')
-    sync_parser.add_argument('--no-analyze', action='store_true', 
+    backup_parser.add_argument('-p', '--provider', nargs='+', metavar='PROV',
+                            help='Only export specific provider(s)')
+    backup_parser.add_argument('--no-analyze', action='store_true', 
                             help='Skip analytics computation')
-    sync_parser.add_argument('--json', action='store_true', 
+    backup_parser.add_argument('--json', action='store_true', 
                             help='Output results as JSON')
     
-    # search command
-    search_parser = subparsers.add_parser('search', 
+    # find command (was: search)
+    find_parser = subparsers.add_parser('find', 
         help='Search across all sessions',
         description='Full-text search across all AI coding sessions.',
         epilog='''
 Examples:
-  aisync search "async function"       Simple text search
-  aisync search "error" -p cursor      Filter by provider
-  aisync search "def \\w+\\(" --regex  Regex pattern
-  aisync search "api" --json -l 50     JSON output, 50 results
+  aisync find "async function"         Simple text search
+  aisync find "error" -p cursor        Filter by provider
+  aisync find "def \\w+\\(" --regex    Regex pattern
+  aisync find "api" --json -l 50       JSON output, 50 results
 ''',
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    search_parser.add_argument('query', help='Search query (text or regex)')
-    search_parser.add_argument('-p', '--provider', metavar='PROV',
+    find_parser.add_argument('query', help='Search query (text or regex)')
+    find_parser.add_argument('-p', '--provider', metavar='PROV',
                               help='Filter by provider name')
-    search_parser.add_argument('-l', '--limit', type=int, default=20, metavar='N',
+    find_parser.add_argument('-l', '--limit', type=int, default=20, metavar='N',
                               help='Maximum results (default: 20)')
-    search_parser.add_argument('--regex', action='store_true', 
+    find_parser.add_argument('--regex', action='store_true', 
                               help='Treat query as regex pattern')
-    search_parser.add_argument('--json', action='store_true', 
+    find_parser.add_argument('--json', action='store_true', 
                               help='Output results as JSON')
     
-    # stats command
-    stats_parser = subparsers.add_parser('stats', 
+    # metrics command (was: stats)
+    metrics_parser = subparsers.add_parser('metrics', 
         help='Show usage statistics',
         description='Display statistics about your AI coding sessions.')
-    stats_parser.add_argument('-f', '--format', choices=['text', 'json'], default='text',
+    metrics_parser.add_argument('-f', '--format', choices=['text', 'json'], default='text',
                              help='Output format (default: text)')
     
-    # report command
-    report_parser = subparsers.add_parser('report', 
-        help='Generate detailed report',
-        description='Generate a comprehensive report with insights.')
-    report_parser.add_argument('-o', '--output', metavar='FILE',
+    # insights command (was: report)
+    insights_parser = subparsers.add_parser('insights', 
+        help='Generate detailed report with insights',
+        description='Generate a comprehensive report with productivity insights.')
+    insights_parser.add_argument('-o', '--output', metavar='FILE',
                               help='Save to file (default: print to stdout)')
     
-    # outputs command
-    subparsers.add_parser('outputs', 
+    # formats command (was: outputs)
+    subparsers.add_parser('formats', 
         help='List available output formats',
         description='Show all supported output formats with descriptions.')
     
-    # providers command
-    subparsers.add_parser('providers', 
-        help='List supported AI tools',
+    # tools command (was: providers)
+    subparsers.add_parser('tools', 
+        help='List supported AI coding tools',
         description='Show all 12 supported AI coding tools and detected sessions.')
     
-    # status command
-    subparsers.add_parser('status', 
-        help='Show sync status',
+    # check command (was: status)
+    subparsers.add_parser('check', 
+        help='Check status and detected sessions',
         description='Display current configuration and detected sessions.')
     
-    # config command
-    config_parser = subparsers.add_parser('config', 
+    # set command (was: config)
+    set_parser = subparsers.add_parser('set', 
         help='Get/set configuration',
         description='Manage aisync configuration.',
         epilog='''
 Examples:
-  aisync config                        List all settings
-  aisync config OBSIDIAN_VAULT         Get vault path
-  aisync config OBSIDIAN_VAULT ~/Obs   Set vault path
+  aisync set                           List all settings
+  aisync set OBSIDIAN_VAULT            Get vault path
+  aisync set OBSIDIAN_VAULT ~/vault    Set vault path
 ''',
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    config_parser.add_argument('key', nargs='?', metavar='KEY',
+    set_parser.add_argument('key', nargs='?', metavar='KEY',
                               help='Configuration key')
-    config_parser.add_argument('value', nargs='?', metavar='VALUE',
+    set_parser.add_argument('value', nargs='?', metavar='VALUE',
                               help='Value to set')
     
     args = parser.parse_args()
@@ -179,22 +179,22 @@ Examples:
         return
     
     try:
-        if args.command == 'sync':
-            cmd_sync(args)
-        elif args.command == 'search':
-            cmd_search(args)
-        elif args.command == 'stats':
-            cmd_stats(args)
-        elif args.command == 'report':
-            cmd_report(args)
-        elif args.command == 'outputs':
-            cmd_outputs()
-        elif args.command == 'providers':
-            cmd_providers()
-        elif args.command == 'status':
-            cmd_status()
-        elif args.command == 'config':
-            cmd_config(args)
+        if args.command == 'backup':
+            cmd_backup(args)
+        elif args.command == 'find':
+            cmd_find(args)
+        elif args.command == 'metrics':
+            cmd_metrics(args)
+        elif args.command == 'insights':
+            cmd_insights(args)
+        elif args.command == 'formats':
+            cmd_formats()
+        elif args.command == 'tools':
+            cmd_tools()
+        elif args.command == 'check':
+            cmd_check()
+        elif args.command == 'set':
+            cmd_set(args)
     except KeyboardInterrupt:
         print("\nCancelled.")
         sys.exit(1)
@@ -203,9 +203,9 @@ Examples:
         sys.exit(1)
 
 
-def cmd_sync(args):
-    """Run sync."""
-    print("🔄 Syncing AI sessions...")
+def cmd_backup(args):
+    """Export sessions to output format(s)."""
+    print("📦 Backing up AI sessions...")
     
     result = sync_all(
         output_dir=args.output,
@@ -217,14 +217,14 @@ def cmd_sync(args):
     if args.json:
         print(json.dumps(result, indent=2, default=str))
     else:
-        print(f"\n✅ Sync complete!")
+        print(f"\n✅ Backup complete!")
         print(f"   📁 Output: {result['output_dir']}")
         print(f"   📊 Sessions: {result['sessions_total']}")
-        print(f"   🔌 Providers: {', '.join(result['by_provider'].keys())}")
+        print(f"   🔌 Tools: {', '.join(result['by_provider'].keys())}")
         
         if result.get('statistics'):
             stats = result['statistics']
-            print(f"\n📈 Statistics:")
+            print(f"\n📈 Metrics:")
             print(f"   Total tokens: {stats.get('total_tokens', 0):,}")
             print(f"   Code blocks: {stats.get('total_code_blocks', 0):,}")
             if stats.get('by_language'):
@@ -232,8 +232,8 @@ def cmd_sync(args):
                 print(f"   Top languages: {', '.join(top_langs)}")
 
 
-def cmd_search(args):
-    """Search sessions."""
+def cmd_find(args):
+    """Find/search sessions."""
     # Parse all sessions
     all_sessions = []
     for provider, parser in get_all_parsers().items():
@@ -266,7 +266,7 @@ def cmd_search(args):
         } for r in results]
         print(json.dumps(output, indent=2))
     else:
-        print(f"🔍 Found {len(results)} results for '{args.query}'\n")
+        print(f"🔍 Found {len(results)} matches for '{args.query}'\n")
         
         for i, result in enumerate(results, 1):
             print(f"{i}. [{result.session.provider.value}] {result.session.date_str}")
@@ -274,8 +274,8 @@ def cmd_search(args):
             print()
 
 
-def cmd_stats(args):
-    """Show statistics."""
+def cmd_metrics(args):
+    """Show usage metrics."""
     # Parse and analyze
     all_sessions = []
     for provider, parser in get_all_parsers().items():
@@ -288,7 +288,7 @@ def cmd_stats(args):
     if args.format == 'json':
         print(json.dumps(stats, indent=2, default=str))
     else:
-        print("📊 AI Sessions Statistics")
+        print("📊 AI Sessions Metrics")
         print("=" * 40)
         print(f"Total sessions:  {stats.get('total_sessions', 0):,}")
         print(f"Total messages:  {stats.get('total_messages', 0):,}")
@@ -296,7 +296,7 @@ def cmd_stats(args):
         print(f"Code blocks:     {stats.get('total_code_blocks', 0):,}")
         print()
         
-        print("By Provider:")
+        print("By Tool:")
         for provider, count in stats.get('by_provider', {}).items():
             print(f"  {provider}: {count}")
         print()
@@ -306,8 +306,8 @@ def cmd_stats(args):
             print(f"  {lang}: {count}")
 
 
-def cmd_report(args):
-    """Generate report."""
+def cmd_insights(args):
+    """Generate insights report."""
     # Parse and analyze
     all_sessions = []
     for provider, parser in get_all_parsers().items():
@@ -321,50 +321,55 @@ def cmd_report(args):
     
     if args.output:
         Path(args.output).write_text(report)
-        print(f"Report saved to {args.output}")
+        print(f"💡 Insights saved to {args.output}")
     else:
         print(report)
 
 
-def cmd_outputs():
-    """List outputs."""
+def cmd_formats():
+    """List output formats."""
     print("📤 Available Output Formats:")
     print()
     for name, desc in list_outputs().items():
         print(f"  {name:10} - {desc}")
 
 
-def cmd_providers():
-    """List providers."""
+def cmd_tools():
+    """List AI tools."""
     from .models import Provider
     
-    print("🔌 Supported AI Tools:")
+    print("🔧 Supported AI Coding Tools:")
     print()
     
     parsers = get_all_parsers()
     for provider in Provider:
-        status = "✅" if provider in parsers else "⚪"
-        print(f"  {status} {provider.value}")
+        parser = parsers.get(provider)
+        if parser:
+            count = len(parser.get_session_paths())
+            status = "✅" if count > 0 else "⚪"
+            print(f"  {status} {provider.value}: {count} sessions")
+        else:
+            print(f"  ⚪ {provider.value}")
 
 
-def cmd_status():
-    """Show status."""
+def cmd_check():
+    """Check status and detected sessions."""
     vault = get_default_vault()
     
-    print("📊 AI Sessions Sync Status")
+    print("🔍 AI Sessions Sync Check")
     print("=" * 40)
     
     if vault:
         print(f"✅ Obsidian vault: {vault}")
     else:
         print("⚠️  No Obsidian vault detected")
-        print("   Set OBSIDIAN_VAULT env var or create ~/.aisync.conf")
+        print("   Run: aisync set OBSIDIAN_VAULT /path/to/vault")
     
     print()
     
     # Count sessions
     total = 0
-    print("Sessions by provider:")
+    print("Detected sessions:")
     for provider, parser in get_all_parsers().items():
         paths = parser.get_session_paths()
         count = len(paths)
@@ -373,11 +378,11 @@ def cmd_status():
         print(f"  {status} {provider.value}: {count}")
     
     print()
-    print(f"Total: {total} sessions")
+    print(f"📊 Total: {total} sessions ready to backup")
 
 
-def cmd_config(args):
-    """Get/set config."""
+def cmd_set(args):
+    """Get/set configuration."""
     config_path = Path.home() / ".aisync.conf"
     
     # Load existing config
@@ -393,21 +398,23 @@ def cmd_config(args):
         config[args.key] = args.value
         lines = [f'{k}="{v}"' for k, v in config.items()]
         config_path.write_text('\n'.join(lines) + '\n')
-        print(f"Set {args.key}={args.value}")
+        print(f"✅ Set {args.key}={args.value}")
     elif args.key:
         # Get
         value = config.get(args.key)
         if value:
             print(f"{args.key}={value}")
         else:
-            print(f"{args.key} is not set")
+            print(f"⚪ {args.key} is not set")
     else:
         # List all
-        print("Configuration:")
+        print("⚙️  Configuration:")
         for key, value in config.items():
             print(f"  {key}={value}")
         if not config:
-            print("  (empty)")
+            print("  (no settings configured)")
+        print()
+        print("Available keys: OBSIDIAN_VAULT, DEFAULT_OUTPUT, REDACT_SECRETS")
 
 
 if __name__ == '__main__':
