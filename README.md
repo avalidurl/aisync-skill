@@ -14,6 +14,7 @@ A modular library that backs up your AI coding sessions with analytics, search, 
 
 - 🔄 **14 AI Tools** - Claude Code, Codex, Cursor, Aider, Cline, Gemini CLI, Continue, Copilot, Roo Code, Windsurf, Zed AI, Amp, OpenCode, OpenRouter
 - 📤 **5 Outputs** - Obsidian, JSON, JSONL, HTML, SQLite
+- ✏️ **Append Mode** - New messages appended to existing notes (preserves your annotations!)
 - 🔒 **Secret Redaction** - 20+ patterns (API keys, tokens, passwords)
 - 📊 **Analytics** - Token usage, language detection, activity patterns
 - 🔍 **Search** - Full-text search with regex support
