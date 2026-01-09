@@ -5,64 +5,18 @@ Includes secret redaction for security.
 """
 
 import json
-import os
-import re
+import sys
 from pathlib import Path
 from datetime import datetime
 
+# Add script directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
+from common import redact_secrets, format_code_block, get_obsidian_vault
+
 # Paths
 CLAUDE_PROJECTS_DIR = Path.home() / ".claude" / "projects"
-OBSIDIAN_VAULT = Path.home() / "Library/Mobile Documents/iCloud~md~obsidian/Documents/zettelkasten"
+OBSIDIAN_VAULT = get_obsidian_vault()
 OUTPUT_DIR = OBSIDIAN_VAULT / "ai-sessions" / "claude-code-sessions"
-
-# Secret patterns to redact
-SECRET_PATTERNS = [
-    (r'sk-[a-zA-Z0-9]{20,}', '[REDACTED: OpenAI API Key]'),
-    (r'sk-ant-[a-zA-Z0-9-]{20,}', '[REDACTED: Anthropic API Key]'),
-    (r'ghp_[a-zA-Z0-9]{36,}', '[REDACTED: GitHub PAT]'),
-    (r'github_pat_[a-zA-Z0-9_]{20,}', '[REDACTED: GitHub PAT]'),
-    (r'gho_[a-zA-Z0-9]{36,}', '[REDACTED: GitHub OAuth]'),
-    (r'xoxb-[a-zA-Z0-9-]+', '[REDACTED: Slack Bot Token]'),
-    (r'xoxp-[a-zA-Z0-9-]+', '[REDACTED: Slack User Token]'),
-    (r'Bearer\s+[a-zA-Z0-9._-]{20,}', '[REDACTED: Bearer Token]'),
-    (r'eyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*', '[REDACTED: JWT Token]'),
-    (r'AKIA[0-9A-Z]{16}', '[REDACTED: AWS Access Key]'),
-    (r'-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----[\s\S]*?-----END\s+(RSA\s+)?PRIVATE\s+KEY-----', '[REDACTED: Private Key]'),
-    (r'-----BEGIN\s+OPENSSH\s+PRIVATE\s+KEY-----[\s\S]*?-----END\s+OPENSSH\s+PRIVATE\s+KEY-----', '[REDACTED: SSH Private Key]'),
-    (r'postgres://[^\s]+', '[REDACTED: Database URL]'),
-    (r'mysql://[^\s]+', '[REDACTED: Database URL]'),
-    (r'mongodb(\+srv)?://[^\s]+', '[REDACTED: MongoDB URL]'),
-    (r'redis://[^\s]+', '[REDACTED: Redis URL]'),
-    (r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}:[^\s@]+@', '[REDACTED: Credential in URL]'),
-    (r'password\s*[=:]\s*["\']?[^\s"\']{8,}["\']?', '[REDACTED: Password]', re.IGNORECASE),
-    (r'api[_-]?key\s*[=:]\s*["\']?[a-zA-Z0-9_-]{16,}["\']?', '[REDACTED: API Key]', re.IGNORECASE),
-    (r'secret\s*[=:]\s*["\']?[a-zA-Z0-9_-]{16,}["\']?', '[REDACTED: Secret]', re.IGNORECASE),
-    (r'token\s*[=:]\s*["\']?[a-zA-Z0-9_.-]{20,}["\']?', '[REDACTED: Token]', re.IGNORECASE),
-    (r'supabase_[a-zA-Z0-9_-]{20,}', '[REDACTED: Supabase Key]'),
-    (r'sb_[a-zA-Z0-9_-]{20,}', '[REDACTED: Supabase Key]'),
-]
-
-def redact_secrets(text):
-    """Redact sensitive information from text."""
-    if not text:
-        return text
-    
-    for pattern in SECRET_PATTERNS:
-        if len(pattern) == 3:
-            regex, replacement, flags = pattern
-            text = re.sub(regex, replacement, text, flags=flags)
-        else:
-            regex, replacement = pattern
-            text = re.sub(regex, replacement, text)
-    
-    return text
-
-def format_code_block(code, language=""):
-    """Format code as markdown code block."""
-    if not code:
-        return ""
-    lang = language.lower() if language else ""
-    return f"\n```{lang}\n{code}\n```\n"
 
 def extract_text_content(content_list):
     """Extract text from Claude's content array."""

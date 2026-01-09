@@ -4,51 +4,20 @@ Sync Cursor AI sessions to Obsidian Zettelkasten
 Run: python3 ~/sync_cursor_to_obsidian.py
 """
 
-import json
 import os
 import re
+import sys
 from pathlib import Path
 from datetime import datetime
 
+# Add script directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
+from common import redact_secrets, get_obsidian_vault
+
 # Configuration
 CURSOR_PROJECTS = Path.home() / ".cursor" / "projects"
-OBSIDIAN_VAULT = Path.home() / "Library/Mobile Documents/iCloud~md~obsidian/Documents/zettelkasten"
+OBSIDIAN_VAULT = get_obsidian_vault()
 OUTPUT_FOLDER = "ai-sessions/cursor-sessions"
-
-# Secret patterns (same as Codex)
-SECRET_PATTERNS = [
-    (r'sk-[a-zA-Z0-9]{20,}', '[REDACTED: OpenAI API Key]'),
-    (r'sk-proj-[a-zA-Z0-9\-_]{50,}', '[REDACTED: OpenAI Project Key]'),
-    (r'sk-ant-[a-zA-Z0-9\-_]{50,}', '[REDACTED: Anthropic API Key]'),
-    (r'xai-[a-zA-Z0-9]{20,}', '[REDACTED: xAI API Key]'),
-    (r'AIza[a-zA-Z0-9\-_]{35}', '[REDACTED: Google API Key]'),
-    (r'AKIA[A-Z0-9]{16}', '[REDACTED: AWS Access Key]'),
-    (r'ghp_[a-zA-Z0-9]{36}', '[REDACTED: GitHub Token]'),
-    (r'gho_[a-zA-Z0-9]{36}', '[REDACTED: GitHub OAuth Token]'),
-    (r'github_pat_[a-zA-Z0-9_]{22,}', '[REDACTED: GitHub PAT]'),
-    (r'glpat-[a-zA-Z0-9\-_]{20,}', '[REDACTED: GitLab Token]'),
-    (r'npm_[a-zA-Z0-9]{36}', '[REDACTED: NPM Token]'),
-    (r'xox[baprs]-[a-zA-Z0-9\-]{10,}', '[REDACTED: Slack Token]'),
-    (r'sk_live_[a-zA-Z0-9]{24,}', '[REDACTED: Stripe Live Key]'),
-    (r'sk_test_[a-zA-Z0-9]{24,}', '[REDACTED: Stripe Test Key]'),
-    (r'Bearer [a-zA-Z0-9\-_\.]{20,}', '[REDACTED: Bearer Token]'),
-    (r'-----BEGIN (RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY( BLOCK)?-----[\s\S]*?-----END (RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY( BLOCK)?-----', '[REDACTED: Private Key Block]'),
-    (r'-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----', '[REDACTED: Certificate Block]'),
-    (r'(password|passwd|pwd|secret|token|api_key|apikey|api-key|auth_token|access_token|refresh_token)\s*[=:]\s*["\']?[a-zA-Z0-9\-_\.!@#$%^&*]{8,}["\']?', '[REDACTED: Credential]'),
-    (r'(mysql|postgres|postgresql|mongodb|redis|amqp)://[^:]+:[^@]+@[^\s]+', '[REDACTED: Database URL]'),
-    (r'eyJ[a-zA-Z0-9\-_]+\.eyJ[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+', '[REDACTED: JWT Token]'),
-]
-
-def redact_secrets(text):
-    """Redact sensitive information from text."""
-    if not text:
-        return text
-    for pattern, replacement in SECRET_PATTERNS:
-        try:
-            text = re.sub(pattern, replacement, text, flags=re.MULTILINE | re.IGNORECASE)
-        except:
-            pass
-    return text
 
 def parse_transcript(file_path):
     """Parse a Cursor agent transcript file."""
@@ -127,13 +96,16 @@ def parse_transcript(file_path):
 
 def get_project_name(file_path):
     """Extract project name from file path."""
-    # Path like: .cursor/projects/Users-gokhanturhan-Documents-GitHub-gokhan-memex/agent-transcripts/...
+    # Path like: .cursor/projects/Users-username-Documents-GitHub-project/agent-transcripts/...
     parts = str(file_path).split('/')
     for i, part in enumerate(parts):
         if part == 'projects' and i + 1 < len(parts):
             project = parts[i + 1]
-            # Clean up the project name
-            project = project.replace('Users-gokhanturhan-', '')
+            # Clean up the project name - remove Users-<username>- prefix dynamically
+            username = os.environ.get('USER', '')
+            if username:
+                project = project.replace(f'Users-{username}-', '')
+            # Convert hyphens to slashes for path-like display
             project = project.replace('-', '/')
             return project
     return "Unknown"
@@ -204,23 +176,26 @@ def main():
     
     # Create output folder
     output_path = OBSIDIAN_VAULT / OUTPUT_FOLDER
-    output_path.mkdir(exist_ok=True)
+    output_path.mkdir(parents=True, exist_ok=True)
     
     # Find all transcript files
     transcript_files = list(CURSOR_PROJECTS.rglob("agent-transcripts/*.txt"))
     print(f"📁 Found {len(transcript_files)} session files")
     
-    new_count = 0
+    synced = 0
+    skipped = 0
     
     for file_path in sorted(transcript_files):
         messages = parse_transcript(file_path)
         
         if not messages:
+            skipped += 1
             continue
         
         # Filter out empty sessions
         user_messages = [m for m in messages if m['role'] == 'user' and m['content']]
         if len(user_messages) < 1:
+            skipped += 1
             continue
         
         md_content, title_date, session_id = generate_markdown(messages, file_path)
@@ -230,60 +205,19 @@ def main():
         date_kebab = title_date.replace(' ', '-')
         filename = f"cursor-{date_kebab}-{project_short}-{session_id}".lower()
         
-        # Write markdown
+        # Check if already synced (skip existing files)
         note_path = output_path / f"{filename}.md"
+        if note_path.exists():
+            skipped += 1
+            continue
+        
+        # Write markdown
         note_path.write_text(md_content, encoding='utf-8')
-        new_count += 1
+        synced += 1
         print(f"  ✅ {filename}")
     
-    print(f"\n✅ Synced {new_count} sessions to {OUTPUT_FOLDER}/")
-
-def create_index(output_path):
-    """Create an index of all sessions."""
-    sessions = sorted(output_path.glob("Cursor *.md"), reverse=True)
-    
-    index_md = f'''---
-aliases: [cursor, cursor sessions]
-tags: [index, MOC, cursor]
----
-
-# 🖱️ Cursor Sessions
-
-> **Total sessions:** {len(sessions)} | **Last synced:** {datetime.now().strftime('%Y-%m-%d %H:%M')}
-
-## Recent Sessions
-
-| Date | Project | Session |
-|------|---------|---------|
-'''
-    
-    for session in sessions[:100]:
-        name = session.stem
-        # Parse filename "Cursor 2026-01-08 1921 project-name abc123"
-        parts = name.split(' ')
-        date = parts[1] if len(parts) > 1 else ""
-        time = parts[2] if len(parts) > 2 else ""
-        project = parts[3] if len(parts) > 3 else ""
-        
-        time_fmt = f"{time[:2]}:{time[2:]}" if len(time) == 4 else time
-        
-        index_md += f"| {date} {time_fmt} | {project} | [[{OUTPUT_FOLDER}/{name}\\|📝 View]] |\n"
-    
-    index_md += f'''
-
----
-
-## Sync Command
-
-```bash
-python3 ~/sync_cursor_to_obsidian.py
-```
-
-*All secrets, API keys, and tokens are automatically redacted*
-'''
-    
-    index_path = output_path.parent / "Cursor Sessions.md"
-    index_path.write_text(index_md, encoding='utf-8')
+    print(f"\n✅ Synced {synced} new sessions ({skipped} skipped)")
+    print(f"📂 Output: {output_path}")
 
 if __name__ == "__main__":
     main()
