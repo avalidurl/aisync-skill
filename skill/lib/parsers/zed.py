@@ -80,7 +80,7 @@ class ZedAIParser(BaseParser):
             id=session_id,
             provider=self.provider,
             messages=messages,
-            created_at=datetime.fromtimestamp(path.stat().st_mtime),
+            created_at=self.get_file_created_at(path),
             model=model,
             source_file=str(path),
             source_mtime=path.stat().st_mtime,
@@ -128,7 +128,7 @@ class ZedAIParser(BaseParser):
             id=path.stem[:8],
             provider=self.provider,
             messages=messages,
-            created_at=datetime.fromtimestamp(path.stat().st_mtime),
+            created_at=self.get_file_created_at(path),
             source_file=str(path),
             source_mtime=path.stat().st_mtime,
             tags=['zed', 'ai-session', 'coding']

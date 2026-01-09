@@ -143,7 +143,7 @@ class OpenCodeParser(BaseParser):
         session_id = path.stem[:8]
         
         if not created_at:
-            created_at = datetime.fromtimestamp(path.stat().st_mtime)
+            created_at = self.get_file_created_at(path)
         
         return Session(
             id=session_id,

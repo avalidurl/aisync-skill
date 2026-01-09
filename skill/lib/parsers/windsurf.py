@@ -74,7 +74,7 @@ class WindsurfParser(BaseParser):
             id=session_id,
             provider=self.provider,
             messages=messages,
-            created_at=datetime.fromtimestamp(path.stat().st_mtime),
+            created_at=self.get_file_created_at(path),
             model="windsurf",
             source_file=str(path),
             source_mtime=path.stat().st_mtime,

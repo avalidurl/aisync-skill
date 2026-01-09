@@ -87,7 +87,8 @@ class ClaudeCodeParser(BaseParser):
             return None
         
         if not created_at:
-            created_at = datetime.fromtimestamp(path.stat().st_mtime)
+            # Use birthtime for stable filenames
+            created_at = self.get_file_created_at(path)
         
         return Session(
             id=session_id,
