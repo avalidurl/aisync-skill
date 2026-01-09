@@ -4,7 +4,7 @@
 
 A skill that backs up your Claude Code, Codex CLI, and Cursor chat sessions to an Obsidian vault as searchable markdown notes — with automatic secret redaction.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![License](https://img.shields.io/badge/license-Unlicense-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-macOS-lightgrey.svg)
 ![Python](https://img.shields.io/badge/python-3.8+-green.svg)
 
@@ -188,7 +188,7 @@ Then trigger with `@aisync` or `$aisync`.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+**Public Domain (Unlicense)** - No copyright. Do whatever you want with it. See [LICENSE](LICENSE).
 
 ## Contributing
 
