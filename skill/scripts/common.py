@@ -122,8 +122,9 @@ def get_cursor_global_storage():
         return HOME / ".config/Cursor/User/globalStorage"
 
 
-# Secret patterns to redact (shared across all sync scripts)
-SECRET_PATTERNS = [
+# Matchers for credential-shaped text. The label is documentation only
+# and is never written into a note or a log line.
+REDACTION_PATTERNS = [
     # API Keys
     (r'sk-[a-zA-Z0-9]{20,}', '[REDACTED: OpenAI API Key]'),
     (r'sk-ant-[a-zA-Z0-9-]{20,}', '[REDACTED: Anthropic API Key]'),
@@ -163,9 +164,13 @@ SECRET_PATTERNS = [
 
 
 def redact_secrets(text):
-    """Redact sensitive information from text."""
+    """Replace credential-shaped substrings before text is stored or logged.
+
+    The stored value is the literal "[redacted]". It is not taken from
+    REDACTION_PATTERNS, so the matcher list itself is not written out.
+    """
     if not text:
         return text
-    for pattern, replacement in SECRET_PATTERNS:
-        text = re.sub(pattern, replacement, text)
+    for pattern, _kind in REDACTION_PATTERNS:
+        text = re.sub(pattern, "[redacted]", text)
     return text

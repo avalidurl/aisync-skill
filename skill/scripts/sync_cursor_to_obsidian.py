@@ -15,8 +15,9 @@ CURSOR_PROJECTS = Path.home() / ".cursor" / "projects"
 OBSIDIAN_VAULT = Path.home() / "Library/Mobile Documents/iCloud~md~obsidian/Documents/zettelkasten"
 OUTPUT_FOLDER = "ai-sessions/cursor-sessions"
 
-# Secret patterns (same as Codex)
-SECRET_PATTERNS = [
+# Matchers for credential-shaped text. The label is documentation only
+# and is never written into a note or a log line.
+REDACTION_PATTERNS = [
     (r'sk-[a-zA-Z0-9]{20,}', '[REDACTED: OpenAI API Key]'),
     (r'sk-proj-[a-zA-Z0-9\-_]{50,}', '[REDACTED: OpenAI Project Key]'),
     (r'sk-ant-[a-zA-Z0-9\-_]{50,}', '[REDACTED: Anthropic API Key]'),
@@ -40,12 +41,16 @@ SECRET_PATTERNS = [
 ]
 
 def redact_secrets(text):
-    """Redact sensitive information from text."""
+    """Replace credential-shaped substrings before text is stored or logged.
+
+    The stored value is the literal "[redacted]". It is not taken from
+    REDACTION_PATTERNS, so the matcher list itself is not written out.
+    """
     if not text:
         return text
-    for pattern, replacement in SECRET_PATTERNS:
+    for pattern, _kind in REDACTION_PATTERNS:
         try:
-            text = re.sub(pattern, replacement, text, flags=re.MULTILINE | re.IGNORECASE)
+            text = re.sub(pattern, "[redacted]", text, flags=re.MULTILINE | re.IGNORECASE)
         except:
             pass
     return text
@@ -118,10 +123,11 @@ def format_assistant_block(text):
     """Format an assistant block with tool calls and thinking."""
     formatted_parts = []
     
-    # Handle [Thinking] blocks - just get the last thinking
+    # Handle [Thinking] blocks - just get the last thinking.
+    # Redact before truncating so a credential is not stored in the note.
     thinking_matches = re.findall(r'\[Thinking\](.*?)(?=\[Tool call\]|\[Tool result\]|$)', text, re.DOTALL)
     if thinking_matches:
-        last_thinking = thinking_matches[-1].strip()[:500]
+        last_thinking = redact_secrets(thinking_matches[-1].strip())[:500]
         if last_thinking:
             formatted_parts.append(f"> 💭 **Thinking:** {last_thinking}...")
     

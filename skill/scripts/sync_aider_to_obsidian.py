@@ -20,8 +20,9 @@ OUTPUT_DIR = OBSIDIAN_VAULT / "ai-sessions" / "aider-sessions"
 # Global history file
 GLOBAL_HISTORY = HOME / ".aider.chat.history.md"
 
-# Secret patterns to redact
-SECRET_PATTERNS = [
+# Matchers for credential-shaped text. The label is documentation only
+# and is never written into a note or a log line.
+REDACTION_PATTERNS = [
     (r'sk-[a-zA-Z0-9]{20,}', '[REDACTED: OpenAI API Key]'),
     (r'sk-ant-[a-zA-Z0-9-]{20,}', '[REDACTED: Anthropic API Key]'),
     (r'ghp_[a-zA-Z0-9]{36,}', '[REDACTED: GitHub PAT]'),
@@ -32,11 +33,15 @@ SECRET_PATTERNS = [
 ]
 
 def redact_secrets(text):
-    """Redact sensitive information from text."""
+    """Replace credential-shaped substrings before text is stored or logged.
+
+    The stored value is the literal "[redacted]". It is not taken from
+    REDACTION_PATTERNS, so the matcher list itself is not written out.
+    """
     if not text:
         return text
-    for pattern, replacement in SECRET_PATTERNS:
-        text = re.sub(pattern, replacement, text)
+    for pattern, _kind in REDACTION_PATTERNS:
+        text = re.sub(pattern, "[redacted]", text)
     return text
 
 def parse_aider_history(file_path):
@@ -159,9 +164,10 @@ def session_to_markdown(session, source_file, session_idx):
     else:
         project = source_file.parent.name
     
-    # Get first user message as summary
-    first_user = next((m['content'][:80] for m in messages if m['role'] == 'user'), 'Session')
-    first_user = first_user.replace('\n', ' ').strip()
+    # Get first user message as summary. Redact before truncating so a
+    # credential that spans the cut is not left in the frontmatter.
+    first_user = next((m['content'] for m in messages if m['role'] == 'user'), 'Session')
+    first_user = redact_secrets(first_user).replace('\n', ' ').strip()[:80]
     
     frontmatter = f'''---
 type: aider-session

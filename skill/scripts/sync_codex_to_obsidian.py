@@ -119,8 +119,10 @@ def session_to_markdown(session_meta, messages, source_file):
     cwd = session_meta.get('cwd', '')
     cli_version = session_meta.get('cli_version', '')
     
-    # Get first user message as summary
-    first_user = next((m[1][:50] for m in messages if m[0] == 'user'), 'Session')
+    # Get first user message as summary. Redact before truncating so a
+    # credential that spans the cut is not left in the frontmatter.
+    first_user = next((m[1] for m in messages if m[0] == 'user'), 'Session')
+    first_user = redact_secrets(first_user).replace('\n', ' ').strip()[:50]
     
     # Build frontmatter
     frontmatter = f"""---
